@@ -34,6 +34,5 @@ def pusher_authentication(
         )
 
     if channel_name == f"private-{tenant_id}":
-        auth = pusher_client.authenticate(channel=channel_name, socket_id=socket_id)
-        return auth
+        return pusher_client.authenticate(channel=channel_name, socket_id=socket_id)
     raise HTTPException(status_code=403, detail="Forbidden")

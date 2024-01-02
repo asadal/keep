@@ -65,7 +65,7 @@ def __send_compressed_alerts(
 def pull_alerts_from_providers(
     tenant_id: str, pusher_client: Pusher | None, sync: bool = False
 ) -> list[AlertDto] | None:
-    if pusher_client is None and sync is False:
+    if pusher_client is None and not sync:
         raise HTTPException(500, "Cannot pull alerts async when pusher is disabled.")
     all_providers = ProvidersFactory.get_all_providers()
     context_manager = ContextManager(
@@ -76,7 +76,7 @@ def pull_alerts_from_providers(
         tenant_id=tenant_id, all_providers=all_providers
     )
     logger.info(
-        f"{'Asynchronously' if sync is False else 'Synchronously'} pulling alerts from installed providers"
+        f"{'Asynchronously' if not sync else 'Synchronously'} pulling alerts from installed providers"
     )
     sync_alerts = []  # if we're running in sync mode
     for provider in installed_providers:
@@ -108,9 +108,7 @@ def pull_alerts_from_providers(
 
             if alerts:
                 # enrich also the pulled alerts:
-                pulled_alerts_fingerprints = list(
-                    set([alert.fingerprint for alert in alerts])
-                )
+                pulled_alerts_fingerprints = list({alert.fingerprint for alert in alerts})
                 pulled_alerts_enrichments = get_enrichments_from_db(
                     tenant_id=tenant_id, fingerprints=pulled_alerts_fingerprints
                 )
@@ -207,11 +205,10 @@ def pull_alerts_from_providers(
                     "tenant_id": tenant_id,
                 },
             )
-            pass
-    if sync is False:
+    if not sync:
         pusher_client.trigger(f"private-{tenant_id}", "async-done", {})
     logger.info("Fetched alerts from installed providers")
-    if sync is True:
+    if sync:
         return sync_alerts
 
 
@@ -295,8 +292,7 @@ def delete_alert(
 
     deleted_last_received = []  # the last received(s) that are deleted
     assignees_last_receievd = {}  # the last received(s) that are assigned to someone
-    enrichment = get_enrichment(tenant_id, delete_alert.fingerprint)
-    if enrichment:
+    if enrichment := get_enrichment(tenant_id, delete_alert.fingerprint):
         deleted_last_received = enrichment.enrichments.get("deleted", [])
         assignees_last_receievd = enrichment.enrichments.get("assignees", {})
         # TODO: this is due to legacy deleted field that was a bool, remove in the future
@@ -353,8 +349,7 @@ def assign_alert(
     )
 
     assignees_last_receievd = {}  # the last received(s) that are assigned to someone
-    enrichment = get_enrichment(tenant_id, fingerprint)
-    if enrichment:
+    if enrichment := get_enrichment(tenant_id, fingerprint):
         assignees_last_receievd = enrichment.enrichments.get("assignees", {})
 
     if unassign:
@@ -437,10 +432,9 @@ def handle_formatted_events(
             session.add(alert)
             formatted_event.event_id = alert.id
             alert_event_copy = {**alert.event}
-            alert_enrichments = get_enrichments_from_db(
+            if alert_enrichments := get_enrichments_from_db(
                 tenant_id=tenant_id, fingerprints=[formatted_event.fingerprint]
-            )
-            if alert_enrichments:
+            ):
                 # enrich
                 for alert_enrichment in alert_enrichments:
                     for enrichment in alert_enrichment.enrichments:
@@ -503,9 +497,7 @@ def handle_formatted_events(
     # Now we need to run the rules engine
     try:
         rules_engine = RulesEngine(tenant_id=tenant_id)
-        grouped_alerts = rules_engine.run_rules(formatted_events)
-        # if new grouped alerts were created, we need to push them to the client
-        if grouped_alerts:
+        if grouped_alerts := rules_engine.run_rules(formatted_events):
             logger.info("Adding group alerts to the workflow manager queue")
             workflow_manager.insert_events(tenant_id, grouped_alerts)
             logger.info("Added group alerts to the workflow manager queue")
@@ -681,8 +673,9 @@ def get_alert(
     )
     # TODO: once pulled alerts will be in the db too, this should be changed
     all_alerts = get_all_alerts(background_tasks=None, tenant_id=tenant_id, sync=True)
-    alert = list(filter(lambda alert: alert.fingerprint == fingerprint, all_alerts))
-    if alert:
+    if alert := list(
+        filter(lambda alert: alert.fingerprint == fingerprint, all_alerts)
+    ):
         return alert[0]
     else:
         raise HTTPException(status_code=404, detail="Alert not found")

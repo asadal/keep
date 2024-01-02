@@ -16,14 +16,13 @@ class NotRequiredIf(click.Option):
         super().__init__(*args, **kwargs)
 
     def handle_parse_result(self, ctx, opts, args):
-        we_are_present = self.name in opts
         other_present = self.not_required_if in opts
 
-        if other_present is False:
-            if we_are_present is False:
+        if not other_present:
+            we_are_present = self.name in opts
+            if not we_are_present:
                 raise click.UsageError(
-                    "Illegal usage: `%s` is required when `%s` is not provided"
-                    % (self.name, self.not_required_if)
+                    f"Illegal usage: `{self.name}` is required when `{self.not_required_if}` is not provided"
                 )
             else:
                 self.prompt = None

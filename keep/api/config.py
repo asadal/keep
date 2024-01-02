@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def on_starting(server=None):
     """This function is called by the gunicorn server when it starts"""
     logger.info("Keep server starting")
-    if not os.environ.get("SKIP_DB_CREATION", "false") == "true":
+    if os.environ.get("SKIP_DB_CREATION", "false") != "true":
         create_db_and_tables()
     try_create_single_tenant(SINGLE_TENANT_UUID)
 

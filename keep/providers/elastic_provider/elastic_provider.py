@@ -63,12 +63,8 @@ class ElasticProvider(BaseProvider):
         """
         api_key = self.config.authentication.get("api_key")
         host = self.config.authentication.get("host")
-        cloud_id = self.config.authentication.get("cloud_id")
-
-        # Elastic.co requires you to connect with cloud_id
-        if cloud_id:
+        if cloud_id := self.config.authentication.get("cloud_id"):
             es = Elasticsearch(api_key=api_key, cloud_id=cloud_id)
-        # Otherwise, connect with host
         elif host:
             es = Elasticsearch(api_key=api_key, hosts=host)
 

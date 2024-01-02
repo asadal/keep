@@ -13,9 +13,7 @@ class FilesystemStorageManager(BaseStorageManager):
             try:
                 os.makedirs(self.directory)
             except OSError:
-                raise Exception(
-                    "Could not create storage directory {}".format(self.directory)
-                )
+                raise Exception(f"Could not create storage directory {self.directory}")
 
     def get_files(self, tenant_id) -> list[str]:
         """
@@ -30,9 +28,7 @@ class FilesystemStorageManager(BaseStorageManager):
             try:
                 os.makedirs(tenant_directory)
             except OSError:
-                raise Exception(
-                    "Could not create tenant directory {}".format(tenant_directory)
-                )
+                raise Exception(f"Could not create tenant directory {tenant_directory}")
 
         for file in os.listdir(tenant_directory):
             if file.endswith(".yaml") or file.endswith(".yml"):
@@ -68,7 +64,7 @@ class FilesystemStorageManager(BaseStorageManager):
             if create_if_not_exist:
                 self.store_file(tenant_id, filename, {})
             else:
-                raise Exception("File {} does not exist".format(full_path))
+                raise Exception(f"File {full_path} does not exist")
         with open(full_path, "r") as f:
             f_raw = f.read()
         return f_raw

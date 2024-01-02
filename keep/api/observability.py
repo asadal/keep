@@ -64,15 +64,15 @@ def setup(app: FastAPI):
     propagator = CloudTraceFormatPropagator()
     set_global_textmap(propagator)
 
-    # let's create a simple middleware that will add a trace id to each request
-    # this will allow us to trace requests through the system and in the exception handler
+
+
     class TraceIDMiddleware:
         async def __call__(self, request: Request, call_next):
             tracer = trace.get_current_span()
             trace_id = tracer.get_span_context().trace_id
             request.state.trace_id = format(trace_id, "032x")
-            response = await call_next(request)
-            return response
+            return await call_next(request)
+
 
     app.middleware("http")(TraceIDMiddleware())
     # Auto-instrument FastAPI application

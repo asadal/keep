@@ -54,11 +54,11 @@ class Step:
 
     def run(self):
         try:
-            if self.config.get("foreach"):
-                did_action_run = self._run_foreach()
-            else:
-                did_action_run = self._run_single()
-            return did_action_run
+            return (
+                self._run_foreach()
+                if self.config.get("foreach")
+                else self._run_single()
+            )
         except Exception as e:
             self.logger.error(
                 "Failed to run step %s with error %s", self.step_id, e, exc_info=True
@@ -113,19 +113,18 @@ class Step:
         conditions = []
 
         for condition in self.conditions:
-            condition_name = condition.get("name", None)
-
-            if not condition_name:
-                raise Exception("Condition must have a name")
-
-            conditions.append(
-                ConditionFactory.get_condition(
-                    self.context_manager,
-                    condition.get("type"),
-                    condition_name,
-                    condition,
+            if condition_name := condition.get("name", None):
+                conditions.append(
+                    ConditionFactory.get_condition(
+                        self.context_manager,
+                        condition.get("type"),
+                        condition_name,
+                        condition,
+                    )
                 )
-            )
+
+            else:
+                raise Exception("Condition must have a name")
 
         for condition in conditions:
             condition_compare_to = condition.get_compare_to()
@@ -213,10 +212,7 @@ class Step:
                 self.config.get("name"),
             )
 
-        # Third, check throttling
-        # Now check if throttling is enabled
-        throttled = self._check_throttling(self.config.get("name"))
-        if throttled:
+        if throttled := self._check_throttling(self.config.get("name")):
             self.logger.info("Action %s is throttled", self.config.get("name"))
             return
 
@@ -224,7 +220,6 @@ class Step:
         # if the provider is async, run it in a new event loop
         if inspect.iscoroutinefunction(self.provider.notify):
             self._run_single_async()
-        # else, just run the provider
         else:
             try:
                 rendered_providers_parameters = self.io_handler.render_context(
@@ -247,14 +242,13 @@ class Step:
                     except Exception as e:
                         if curr_retry_count == self.__retry_count:
                             raise StepError(e)
-                        else:
-                            self.logger.info(
-                                "Retrying running %s step after %s second(s)...",
-                                self.step_id,
-                                self.__retry_interval,
-                            )
+                        self.logger.info(
+                            "Retrying running %s step after %s second(s)...",
+                            self.step_id,
+                            self.__retry_interval,
+                        )
 
-                            time.sleep(self.__retry_interval)
+                        time.sleep(self.__retry_interval)
 
                 extra_context = self.provider.expose()
                 rendered_providers_parameters.update(extra_context)
@@ -289,14 +283,13 @@ class Step:
             except Exception as e:
                 if curr_retry_count == self.__retry_count:
                     raise ActionError(e)
-                else:
-                    self.logger.info(
-                        "Retrying running %s step after %s second(s)...",
-                        self.step_id,
-                        self.__retry_interval,
-                    )
+                self.logger.info(
+                    "Retrying running %s step after %s second(s)...",
+                    self.step_id,
+                    self.__retry_interval,
+                )
 
-                    time.sleep(self.__retry_interval)
+                time.sleep(self.__retry_interval)
 
 
 class StepError(Exception):

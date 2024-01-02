@@ -37,8 +37,7 @@ def first(iterable):
 
 
 def utcnow() -> datetime.datetime:
-    dt = datetime.datetime.now(datetime.timezone.utc)
-    return dt
+    return datetime.datetime.now(datetime.timezone.utc)
 
 
 def substract_minutes(dt: datetime.datetime, minutes: int) -> datetime.datetime:
@@ -58,13 +57,11 @@ def substract_minutes(dt: datetime.datetime, minutes: int) -> datetime.datetime:
 def to_utc(dt: datetime.datetime | str) -> datetime.datetime:
     if isinstance(dt, str):
         dt = parser.parse(dt)
-    utc_dt = dt.astimezone(pytz.utc)
-    return utc_dt
+    return dt.astimezone(pytz.utc)
 
 
 def datetime_compare(t1, t2) -> float:
-    diff = (t1 - t2).total_seconds() / 3600
-    return diff
+    return (t1 - t2).total_seconds() / 3600
 
 
 def encode(string) -> str:

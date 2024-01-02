@@ -37,14 +37,12 @@ def get_user_email(request: Request) -> str | None:
 
     tracer = trace.get_tracer(__name__)
     with tracer.start_as_current_span("get_user_email"):
-        token = request.headers.get("Authorization")
-        if token:
+        if token := request.headers.get("Authorization"):
             token = token.split(" ")[1]
             decoded_token = jwt.decode(token, options={"verify_signature": False})
             return decoded_token.get("email")
         elif "x-api-key" in request.headers:
-            username = get_user_by_api_key(request.headers["x-api-key"])
-            return username
+            return get_user_by_api_key(request.headers["x-api-key"])
         else:
             raise HTTPException(
                 status_code=401, detail="Invalid authentication credentials"
@@ -138,8 +136,7 @@ def verify_api_key(
 
 
 # init once so the cache will actually work
-auth_domain = os.environ.get("AUTH0_DOMAIN")
-if auth_domain:
+if auth_domain := os.environ.get("AUTH0_DOMAIN"):
     jwks_uri = f"https://{auth_domain}/.well-known/jwks.json"
     jwks_client = jwt.PyJWKClient(jwks_uri, cache_keys=True)
 
@@ -165,8 +162,7 @@ def verify_bearer_token(token: str = Depends(oauth2_scheme)) -> str:
                 issuer=issuer,
                 leeway=60,
             )
-            tenant_id = payload.get("keep_tenant_id")
-            return tenant_id
+            return payload.get("keep_tenant_id")
         except jwt.exceptions.DecodeError:
             logger.exception("Failed to decode token")
             raise HTTPException(status_code=401, detail="Token is not a valid JWT")
@@ -205,8 +201,7 @@ def verify_bearer_token_single_tenant(token: str = Depends(oauth2_scheme)) -> st
             jwt_secret,
             algorithms="HS256",
         )
-        tenant_id = payload.get("tenant_id")
-        return tenant_id
+        return payload.get("tenant_id")
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid JWT token")
 
@@ -306,6 +301,6 @@ def get_pusher_client() -> Pusher | None:
         app_id=os.environ.get("PUSHER_APP_ID"),
         key=os.environ.get("PUSHER_APP_KEY"),
         secret=os.environ.get("PUSHER_APP_SECRET"),
-        ssl=False if os.environ.get("PUSHER_USE_SSL", False) is False else True,
+        ssl=os.environ.get("PUSHER_USE_SSL", False) is not False,
         cluster=os.environ.get("PUSHER_CLUSTER"),
     )

@@ -126,10 +126,7 @@ class CustomizedUvicornLogger(logging.Logger):
         extra=None,
         sinfo=None,
     ):
-        if extra:
-            trace_id = extra.pop("otelTraceID", None)
-        else:
-            trace_id = None
+        trace_id = extra.pop("otelTraceID", None) if extra else None
         rv = super().makeRecord(
             name, level, fn, lno, msg, args, exc_info, func, extra, sinfo
         )

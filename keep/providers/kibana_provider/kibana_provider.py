@@ -153,16 +153,7 @@ class KibanaProvider(BaseProvider):
         validated_scopes = {}
         for scope in self.PROVIDER_SCOPES:
             try:
-                if scope.name == "rulesSettings:read":
-                    self.request(
-                        "GET", "api/alerting/rules/_find", params={"per_page": 1}
-                    )
-                elif scope.name == "rulesSettings:write":
-                    alert = self.request(
-                        "POST", "api/alerting/rule", json=self.MOCK_ALERT_PAYLOAD
-                    )
-                    self.request("DELETE", f"api/alerting/rule/{alert['id']}")
-                elif scope.name == "actions:read":
+                if scope.name == "actions:read":
                     self.request("GET", "api/actions/connectors")
                 elif scope.name == "actions:write":
                     connector = self.request(
@@ -171,11 +162,18 @@ class KibanaProvider(BaseProvider):
                         json=self.MOCK_CONNECTOR_PAYLOAD,
                     )
                     self.request("DELETE", f"api/actions/connector/{connector['id']}")
+                elif scope.name == "rulesSettings:read":
+                    self.request(
+                        "GET", "api/alerting/rules/_find", params={"per_page": 1}
+                    )
+                elif scope.name == "rulesSettings:write":
+                    alert = self.request(
+                        "POST", "api/alerting/rule", json=self.MOCK_ALERT_PAYLOAD
+                    )
+                    self.request("DELETE", f"api/alerting/rule/{alert['id']}")
             except HTTPException as e:
-                if e.status_code == 403 or e.status_code == 401:
+                if e.status_code in [403, 401]:
                     validated_scopes[scope.name] = e.detail
-                # this means we faild on something else which is not permissions and it's probably ok.
-                pass
             except Exception as e:
                 validated_scopes[scope.name] = str(e)
                 continue

@@ -127,10 +127,6 @@ class SentryProvider(BaseProvider):
                         f"{self.SENTRY_API}/projects/{self.sentry_org_slug}/{self.project_slug}/issues/",
                         headers=self.__headers,
                     )
-                    if not response.ok:
-                        response_json = response.json()
-                        validated_scopes[scope.name] = response_json.get("detail")
-                        continue
                 else:
                     projects_response = requests.get(
                         f"{self.SENTRY_API}/projects/",
@@ -146,10 +142,10 @@ class SentryProvider(BaseProvider):
                         f"{self.SENTRY_API}/projects/{self.sentry_org_slug}/{project_slug}/issues/",
                         headers=self.__headers,
                     )
-                    if not response.ok:
-                        response_json = response.json()
-                        validated_scopes[scope.name] = response_json.get("detail")
-                        continue
+                if not response.ok:
+                    response_json = response.json()
+                    validated_scopes[scope.name] = response_json.get("detail")
+                    continue
                 validated_scopes[scope.name] = True
             elif scope.name == "project:read":
                 response = requests.get(
@@ -296,7 +292,7 @@ class SentryProvider(BaseProvider):
                 f"{self.SENTRY_API}/projects/{self.sentry_org_slug}/{project_slug}/rules/",
                 headers=self.__headers,
             ).json()
-            alert_rule_exists = next(
+            if alert_rule_exists := next(
                 iter(
                     [
                         alert_rule
@@ -305,8 +301,9 @@ class SentryProvider(BaseProvider):
                     ]
                 ),
                 None,
-            )
-            if not alert_rule_exists:
+            ):
+                self.logger.info(f"Sentry webhook already exists for {project_slug}")
+            else:
                 alert_payload = {
                     "conditions": [
                         {
@@ -343,8 +340,6 @@ class SentryProvider(BaseProvider):
                     )
                     continue
                 self.logger.info(f"Sentry webhook setup complete for {project_slug}")
-            else:
-                self.logger.info(f"Sentry webhook already exists for {project_slug}")
         self.logger.info("Sentry webhook setup complete")
 
     def __get_issues(self, project_slug: str) -> dict:

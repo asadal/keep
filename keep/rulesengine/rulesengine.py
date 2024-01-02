@@ -78,8 +78,7 @@ class RulesEngine:
         grouped_alerts = []
         for rule in relevent_rules_for_events:
             self.logger.info(f"Running relevant rule {rule.name}")
-            rule_results = self._run_rule(rule)
-            if rule_results:
+            if rule_results := self._run_rule(rule):
                 self.logger.info("Rule applies, creating grouped alert")
                 # create grouped alert
                 event_payload = []
@@ -104,7 +103,6 @@ class RulesEngine:
                     tenant_id=self.tenant_id,
                     provider_type="rules",
                     provider_id=rule.id,
-                    # todo: event should support list?
                     event={
                         "events": event_payload,
                         "name": group_alert_name,
@@ -113,9 +111,8 @@ class RulesEngine:
                         ).isoformat(),
                         "severity": severity,
                         "source": list(
-                            set([event["source"][0] for event in event_payload])
+                            {event["source"][0] for event in event_payload}
                         ),
-                        # TODO: should be calculated somehow else
                         "id": fingerprint,
                         "status": "firing",
                         "pushed": True,
@@ -127,8 +124,7 @@ class RulesEngine:
                 self.logger.info("Created alert")
 
         self.logger.info(f"Rules ran, {len(grouped_alerts)} alerts created")
-        alerts_dto = [AlertDto(**alert.event) for alert in grouped_alerts]
-        return alerts_dto
+        return [AlertDto(**alert.event) for alert in grouped_alerts]
 
     def _extract_subrules(self, expression):
         # CEL rules looks like '(source == "sentry") && (source == "grafana" && severity == "critical")'
@@ -158,8 +154,7 @@ class RulesEngine:
         for sub_rule in sub_rules:
             ast = env.compile(sub_rule)
             prgm = env.program(ast)
-            r = prgm.evaluate(payload)
-            if r:
+            if r := prgm.evaluate(payload):
                 return True
         # no subrules matched
         return False

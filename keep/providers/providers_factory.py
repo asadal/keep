@@ -39,20 +39,18 @@ class ProvidersFactory:
             f"keep.providers.{actual_provider_type}_provider.{actual_provider_type}_provider"
         )
 
-        # If the provider type doesn't include a sub-type, e.g. "cloudwatch.logs"
-        if len(provider_type_split) == 1:
-            provider_class = getattr(
+        return (
+            getattr(
                 module, actual_provider_type.title().replace("_", "") + "Provider"
             )
-        # If the provider type includes a sub-type, e.g. "cloudwatch.metrics"
-        else:
-            provider_class = getattr(
+            if len(provider_type_split) == 1
+            else getattr(
                 module,
                 actual_provider_type.title().replace("_", "")
                 + provider_type_split[1].title().replace("_", "")
                 + "Provider",
             )
-        return provider_class
+        )
 
     @staticmethod
     def get_provider(
@@ -79,12 +77,11 @@ class ProvidersFactory:
         provider_config = ProviderConfig(**provider_config)
 
         try:
-            provider = provider_class(
+            return provider_class(
                 context_manager=context_manager,
                 provider_id=provider_id,
                 config=provider_config,
             )
-            return provider
         except TypeError as exc:
             error_message = f"Configuration problem while trying to initialize the provider {provider_id}. Probably missing provider config, please check the provider configuration."
             logging.getLogger(__name__).error(error_message)
@@ -111,23 +108,21 @@ class ProvidersFactory:
             f"keep.providers.{provider_type}_provider.{provider_type}_provider"
         )
         try:
-            provider_auth_config_class = getattr(
-                module, provider_type.title().replace("_", "") + "ProviderAuthConfig"
+            return getattr(
+                module,
+                provider_type.title().replace("_", "") + "ProviderAuthConfig",
             )
-            return provider_auth_config_class
         except (ImportError, AttributeError):
             logging.getLogger(__name__).warning(
                 f"Provider {provider_type} does not have a provider auth config class"
             )
             return {}
 
-    def __get_methods(provider_class: BaseProvider) -> list[ProviderMethodDTO]:
+    def __get_methods(self) -> list[ProviderMethodDTO]:
         methods = []
-        for method in provider_class.PROVIDER_METHODS:
+        for method in self.PROVIDER_METHODS:
             params = dict(
-                inspect.signature(
-                    provider_class.__dict__.get(method.func_name)
-                ).parameters
+                inspect.signature(self.__dict__.get(method.func_name)).parameters
             )
             func_params = []
             for param in params:

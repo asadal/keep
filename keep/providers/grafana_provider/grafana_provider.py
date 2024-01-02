@@ -113,25 +113,20 @@ class GrafanaProvider(BaseProvider):
             ).json()
         except requests.exceptions.ConnectionError:
             self.logger.exception("Failed to connect to Grafana")
-            validated_scopes = {
+            return {
                 scope.name: "Failed to connect to Grafana. Please check your host."
                 for scope in self.PROVIDER_SCOPES
             }
-            return validated_scopes
         except Exception:
             self.logger.exception("Failed to get permissions from Grafana")
-            validated_scopes = {
+            return {
                 scope.name: "Failed to get permissions. Please check your token."
                 for scope in self.PROVIDER_SCOPES
             }
-            return validated_scopes
-        validated_scopes = {}
-        for scope in self.PROVIDER_SCOPES:
-            if scope.name in response:
-                validated_scopes[scope.name] = True
-            else:
-                validated_scopes[scope.name] = "Missing scope"
-        return validated_scopes
+        return {
+            scope.name: True if scope.name in response else "Missing scope"
+            for scope in self.PROVIDER_SCOPES
+        }
 
     def get_alerts_configuration(self, alert_id: str | None = None):
         api = f"{self.authentication_config.host}{APIEndpoints.ALERTING_PROVISIONING.value}/alert-rules"
@@ -177,25 +172,23 @@ class GrafanaProvider(BaseProvider):
     @staticmethod
     def format_alert(event: dict) -> AlertDto:
         alerts = event.get("alerts", [])
-        formatted_alerts = []
-        for alert in alerts:
-            formatted_alerts.append(
-                AlertDto(
-                    id=alert.get("fingerprint"),
-                    fingerprint=alert.get("fingerprint"),
-                    name=event.get("title"),
-                    status=event.get("status"),
-                    severity=alert.get("severity", None),
-                    lastReceived=datetime.datetime.now(
-                        tz=datetime.timezone.utc
-                    ).isoformat(),
-                    fatigueMeter=random.randint(0, 100),
-                    description=alert.get("annotations", {}).get("summary", ""),
-                    source=["grafana"],
-                    labels=alert.get("labels", {}),
-                )
+        return [
+            AlertDto(
+                id=alert.get("fingerprint"),
+                fingerprint=alert.get("fingerprint"),
+                name=event.get("title"),
+                status=event.get("status"),
+                severity=alert.get("severity", None),
+                lastReceived=datetime.datetime.now(
+                    tz=datetime.timezone.utc
+                ).isoformat(),
+                fatigueMeter=random.randint(0, 100),
+                description=alert.get("annotations", {}).get("summary", ""),
+                source=["grafana"],
+                labels=alert.get("labels", {}),
             )
-        return formatted_alerts
+            for alert in alerts
+        ]
 
     def setup_webhook(
         self, tenant_id: str, keep_api_url: str, api_key: str, setup_alerts: bool = True
@@ -209,13 +202,12 @@ class GrafanaProvider(BaseProvider):
         all_contact_points = requests.get(contacts_api, verify=False, headers=headers)
         all_contact_points.raise_for_status()
         all_contact_points = all_contact_points.json()
-        webhook_exists = [
+        if webhook_exists := [
             webhook_exists
             for webhook_exists in all_contact_points
             if webhook_exists.get("name") == webhook_name
             or webhook_exists.get("uid") == webhook_name
-        ]
-        if webhook_exists:
+        ]:
             webhook = webhook_exists[0]
             webhook["settings"]["url"] = keep_api_url
             webhook["settings"]["authorization_scheme"] = "digest"
@@ -255,11 +247,9 @@ class GrafanaProvider(BaseProvider):
                 policies_api, verify=False, headers=headers
             ).json()
             policy_exists = any(
-                [
-                    p
-                    for p in all_policies.get("routes", [])
-                    if p.get("receiver") == webhook_name
-                ]
+                p
+                for p in all_policies.get("routes", [])
+                if p.get("receiver") == webhook_name
             )
             if not policy_exists:
                 if all_policies["receiver"]:
@@ -268,11 +258,9 @@ class GrafanaProvider(BaseProvider):
                         "continue": True,
                     }
                     if not any(
-                        [
-                            p
-                            for p in all_policies.get("routes", [])
-                            if p == default_policy
-                        ]
+                        p
+                        for p in all_policies.get("routes", [])
+                        if p == default_policy
                     ):
                         # This is so we won't override the default receiver if customer has one.
                         all_policies["routes"].append(
@@ -354,10 +342,8 @@ class GrafanaProvider(BaseProvider):
         if not response.ok:
             raise ProviderException("Failed to get alerts from Grafana")
         events_history = response.json()
-        events_data = events_history.get("data", [])
-        if events_data:
-            events_data_values = events_data.get("values")
-            if events_data_values:
+        if events_data := events_history.get("data", []):
+            if events_data_values := events_data.get("values"):
                 events = events_data_values[1]
                 events_time = events_data_values[0]
                 alerts = []

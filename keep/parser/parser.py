@@ -64,13 +64,12 @@ class Parser:
             raw_workflows = parsed_workflow_yaml.get(
                 "workflows"
             ) or parsed_workflow_yaml.get("alerts")
-            workflows = [
+            return [
                 self._parse_workflow(
                     tenant_id, workflow, providers_file, workflow_providers
                 )
                 for workflow in raw_workflows
             ]
-        # the alert here is backward compatibility
         elif parsed_workflow_yaml.get("workflow") or parsed_workflow_yaml.get("alert"):
             raw_workflow = parsed_workflow_yaml.get(
                 "workflow"
@@ -78,14 +77,12 @@ class Parser:
             workflow = self._parse_workflow(
                 tenant_id, raw_workflow, providers_file, workflow_providers
             )
-            workflows = [workflow]
-        # else, if it stored in the db, it stored without the "workflow" key
+            return [workflow]
         else:
             workflow = self._parse_workflow(
                 tenant_id, parsed_workflow_yaml, providers_file, workflow_providers
             )
-            workflows = [workflow]
-        return workflows
+            return [workflow]
 
     def _get_workflow_provider_types_from_steps_and_actions(
         self, steps: list[Step], actions: list[Step]
@@ -216,8 +213,7 @@ class Parser:
         KEEP_PROVIDERS is a JSON string of the providers config.
             (e.g. {"slack-prod": {"authentication": {"webhook_url": "https://hooks.slack.com/services/..."}}})
         """
-        providers_json = os.environ.get("KEEP_PROVIDERS")
-        if providers_json:
+        if providers_json := os.environ.get("KEEP_PROVIDERS"):
             try:
                 self.logger.debug(
                     "Parsing providers from KEEP_PROVIDERS environment variable"
@@ -231,7 +227,7 @@ class Parser:
                     "Error parsing providers from KEEP_PROVIDERS environment variable"
                 )
 
-        for env in os.environ.keys():
+        for env in os.environ:
             if env.startswith("KEEP_PROVIDER_"):
                 # KEEP_PROVIDER_SLACK_PROD
                 provider_name = (
@@ -275,12 +271,10 @@ class Parser:
         return workflow_id
 
     def _parse_owners(self, workflow) -> typing.List[str]:
-        workflow_owners = workflow.get("owners", [])
-        return workflow_owners
+        return workflow.get("owners", [])
 
     def _parse_tags(self, workflow) -> typing.List[str]:
-        workflow_tags = workflow.get("tags", [])
-        return workflow_tags
+        return workflow.get("tags", [])
 
     def parse_interval(self, workflow) -> int:
         # backward compatibility
@@ -347,10 +341,9 @@ class Parser:
         provider_id, provider_config = self._parse_provider_config(
             context_manager, step_provider_type, step_provider_config
         )
-        provider = ProvidersFactory.get_provider(
+        return ProvidersFactory.get_provider(
             context_manager, provider_id, step_provider_type, provider_config
         )
-        return provider
 
     def _get_action(
         self,
@@ -408,8 +401,7 @@ class Parser:
             Action | None: _description_
         """
         self.logger.debug("Parsing on-faliure")
-        workflow_on_failure = workflow.get("on-failure", {})
-        if workflow_on_failure:
+        if workflow_on_failure := workflow.get("on-failure", {}):
             parsed_action = self._get_action(workflow_on_failure, "on-faliure")
             self.logger.debug("Parsed on-failure successfully")
             return parsed_action
@@ -435,8 +427,7 @@ class Parser:
                 "Provider config is not valid, should be in the format: {{ <provider_id>.<config_id> }}"
             )
 
-        provider_id = provider_type[1].replace("}}", "").strip()
-        return provider_id
+        return provider_type[1].replace("}}", "").strip()
 
     def _parse_provider_config(
         self,
@@ -513,10 +504,4 @@ class Parser:
         Args:
             workflow (dict): _description_
         """
-        # triggers:
-        # - type: alert
-        # filters:
-        # - key: alert.source
-        #   value: awscloudwatch
-        triggers = workflow.get("triggers", [])
-        return triggers
+        return workflow.get("triggers", [])

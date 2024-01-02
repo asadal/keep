@@ -9,7 +9,6 @@ def getAuth0Client() -> Auth0:
     AUTH0_CLIENT_ID = config("AUTH0_CLIENT_ID")
     AUTH0_CLIENT_SECRET = config("AUTH0_CLIENT_SECRET")
     get_token = GetToken(AUTH0_DOMAIN, AUTH0_CLIENT_ID, AUTH0_CLIENT_SECRET)
-    token = get_token.client_credentials("https://{}/api/v2/".format(AUTH0_DOMAIN))
+    token = get_token.client_credentials(f"https://{AUTH0_DOMAIN}/api/v2/")
     mgmt_api_token = token["access_token"]
-    auth0 = Auth0(AUTH0_DOMAIN, mgmt_api_token)
-    return auth0
+    return Auth0(AUTH0_DOMAIN, mgmt_api_token)

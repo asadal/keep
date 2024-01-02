@@ -26,8 +26,7 @@ class WorkflowStore:
         self.logger = logging.getLogger(__name__)
 
     def get_workflow_execution(self, tenant_id: str, workflow_execution_id: str):
-        workflow_execution = get_workflow_execution(tenant_id, workflow_execution_id)
-        return workflow_execution
+        return get_workflow_execution(tenant_id, workflow_execution_id)
 
     def create_workflow(self, tenant_id: str, created_by, workflow: dict):
         workflow_id = workflow.get("id")
@@ -103,14 +102,10 @@ class WorkflowStore:
             )
 
     def get_all_workflows(self, tenant_id: str) -> list[Workflow]:
-        # list all tenant's workflows
-        workflows = get_all_workflows(tenant_id)
-        return workflows
+        return get_all_workflows(tenant_id)
 
     def get_all_workflows_with_last_execution(self, tenant_id: str) -> list[Workflow]:
-        # list all tenant's workflows
-        workflows = get_workflows_with_last_execution(tenant_id)
-        return workflows
+        return get_workflows_with_last_execution(tenant_id)
 
     def get_workflows_from_path(
         self, tenant_id, workflow_path: str | tuple[str], providers_file: str = None

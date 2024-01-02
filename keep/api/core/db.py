@@ -236,7 +236,6 @@ def get_workflows_that_should_run():
                 # some other thread/instance has already started to work on it
                 except IntegrityError:
                     continue
-            # else, if the last execution was more than interval seconds ago, we need to run it
             elif (
                 last_execution.started + timedelta(seconds=workflow.interval)
                 <= current_time
@@ -260,11 +259,9 @@ def get_workflows_that_should_run():
                     )
                     # continue to the next one
                     continue
-                # some other thread/instance has already started to work on it
                 except IntegrityError:
                     # we need to verify the locking is still valid and not timeouted
                     session.rollback()
-                    pass
                 # get the ongoing execution
                 ongoing_execution = session.exec(
                     select(WorkflowExecution)
@@ -434,16 +431,12 @@ def get_workflow(tenant_id: str, workflow_id: str) -> Workflow:
                 .where(Workflow.name == workflow_id)
                 .where(Workflow.is_deleted == False)
             ).first()
-    if not workflow:
-        return None
-    return workflow
+    return None if not workflow else workflow
 
 
 def get_raw_workflow(tenant_id: str, workflow_id: str) -> str:
     workflow = get_workflow(tenant_id, workflow_id)
-    if not workflow:
-        return None
-    return workflow.workflow_raw
+    return None if not workflow else workflow.workflow_raw
 
 
 def get_installed_providers(tenant_id: str) -> List[Provider]:
@@ -495,27 +488,23 @@ def get_workflow_executions(tenant_id, workflow_id, limit=50):
 
 def delete_workflow(tenant_id, workflow_id):
     with Session(engine) as session:
-        workflow = session.exec(
+        if workflow := session.exec(
             select(Workflow)
             .where(Workflow.tenant_id == tenant_id)
             .where(Workflow.id == workflow_id)
-        ).first()
-
-        if workflow:
+        ).first():
             workflow.is_deleted = True
             session.commit()
 
 
 def get_workflow_id(tenant_id, workflow_name):
     with Session(engine) as session:
-        workflow = session.exec(
+        if workflow := session.exec(
             select(Workflow)
             .where(Workflow.tenant_id == tenant_id)
             .where(Workflow.name == workflow_name)
             .where(Workflow.is_deleted == False)
-        ).first()
-
-        if workflow:
+        ).first():
             return workflow.id
 
 
@@ -523,11 +512,13 @@ def push_logs_to_db(log_entries):
     db_log_entries = [
         WorkflowExecutionLog(
             workflow_execution_id=log_entry["workflow_execution_id"],
-            timestamp=datetime.strptime(log_entry["asctime"], "%Y-%m-%d %H:%M:%S,%f"),
-            message=log_entry["message"][0:255],  # limit the message to 255 chars
+            timestamp=datetime.strptime(
+                log_entry["asctime"], "%Y-%m-%d %H:%M:%S,%f"
+            ),
+            message=log_entry["message"][:255],
             context=json.loads(
                 json.dumps(log_entry.get("context", {}), default=str)
-            ),  # workaround to serialize any object
+            ),
         )
         for log_entry in log_entries
     ]
@@ -540,7 +531,7 @@ def push_logs_to_db(log_entries):
 
 def get_workflow_execution(tenant_id: str, workflow_execution_id: str):
     with Session(engine) as session:
-        execution_with_logs = (
+        return (
             session.query(WorkflowExecution)
             .filter(
                 WorkflowExecution.id == workflow_execution_id,
@@ -548,14 +539,12 @@ def get_workflow_execution(tenant_id: str, workflow_execution_id: str):
             .options(joinedload(WorkflowExecution.logs))
             .one()
         )
-
-        return execution_with_logs
     return execution_with_logs
 
 
 def get_last_workflow_executions(tenant_id: str, limit=20):
     with Session(engine) as session:
-        execution_with_logs = (
+        return (
             session.query(WorkflowExecution)
             .filter(
                 WorkflowExecution.tenant_id == tenant_id,
@@ -566,14 +555,13 @@ def get_last_workflow_executions(tenant_id: str, limit=20):
             .all()
         )
 
-        return execution_with_logs
-
 
 def enrich_alert(tenant_id, fingerprint, enrichments):
     # else, the enrichment doesn't exist, create it
     with Session(engine) as session:
-        enrichment = get_enrichment_with_session(session, tenant_id, fingerprint)
-        if enrichment:
+        if enrichment := get_enrichment_with_session(
+            session, tenant_id, fingerprint
+        ):
             # SQLAlchemy doesn't support updating JSON fields, so we need to do it manually
             # https://github.com/sqlalchemy/sqlalchemy/discussions/8396#discussion-4308891
             new_enrichment_data = {**enrichment.enrichments, **enrichments}
@@ -628,12 +616,11 @@ def get_enrichments(
 
 
 def get_enrichment_with_session(session, tenant_id, fingerprint):
-    alert_enrichment = session.exec(
+    return session.exec(
         select(AlertEnrichment)
         .where(AlertEnrichment.tenant_id == tenant_id)
         .where(AlertEnrichment.alert_fingerprint == fingerprint)
     ).first()
-    return alert_enrichment
 
 
 def get_alerts_with_filters(tenant_id, provider_id=None, filters=None):
@@ -736,12 +723,11 @@ def delete_user(username):
     from keep.api.models.db.user import User
 
     with Session(engine) as session:
-        user = session.exec(
+        if user := session.exec(
             select(User)
             .where(User.tenant_id == SINGLE_TENANT_UUID)
             .where(User.username == username)
-        ).first()
-        if user:
+        ).first():
             session.delete(user)
             session.commit()
 
@@ -777,28 +763,25 @@ def save_workflow_results(tenant_id, workflow_execution_id, workflow_results):
 
 def get_workflow_id_by_name(tenant_id, workflow_name):
     with Session(engine) as session:
-        workflow = session.exec(
+        if workflow := session.exec(
             select(Workflow)
             .where(Workflow.tenant_id == tenant_id)
             .where(Workflow.name == workflow_name)
             .where(Workflow.is_deleted == False)
-        ).first()
-
-        if workflow:
+        ).first():
             return workflow.id
 
 
 def get_previous_execution_id(tenant_id, workflow_id, workflow_execution_id):
     with Session(engine) as session:
-        previous_execution = session.exec(
+        if previous_execution := session.exec(
             select(WorkflowExecution)
             .where(WorkflowExecution.tenant_id == tenant_id)
             .where(WorkflowExecution.workflow_id == workflow_id)
             .where(WorkflowExecution.id != workflow_execution_id)
             .order_by(WorkflowExecution.started.desc())
             .limit(1)
-        ).first()
-        if previous_execution:
+        ).first():
             return previous_execution
         else:
             return None
@@ -825,11 +808,11 @@ def update_rule(
     tenant_id, rule_id, name, timeframe, definition, definition_cel, updated_by
 ):
     with Session(engine) as session:
-        rule = session.exec(
-            select(Rule).where(Rule.tenant_id == tenant_id).where(Rule.id == rule_id)
-        ).first()
-
-        if rule:
+        if rule := session.exec(
+            select(Rule)
+            .where(Rule.tenant_id == tenant_id)
+            .where(Rule.id == rule_id)
+        ).first():
             rule.name = name
             rule.timeframe = timeframe
             rule.definition = definition
@@ -911,7 +894,9 @@ def run_rule(tenant_id, rule):
                             ),
                             (
                                 json_type == "STRING",
-                                json_extracted.like("%" + bindparam(bind, value) + "%"),
+                                json_extracted.like(
+                                    f"%{bindparam(bind, value)}%"
+                                ),
                             ),
                             (
                                 json_type == "OBJECT",
@@ -921,7 +906,6 @@ def run_rule(tenant_id, rule):
                         else_=False,
                     )
                     filters.append(condition)
-                # else, sqlite
                 elif session.bind.dialect.name == "sqlite":
                     json_extracted = func.json_extract(Alert.event, json_path)
                     # Determine the type of the JSON field
@@ -931,24 +915,20 @@ def run_rule(tenant_id, rule):
                     # Adjust the logic if you need to support complex nested objects.
                     condition = case(
                         [
-                            # If the field is an array, use LIKE operator for matching
                             (
                                 json_type == "array",
                                 json_extracted.like(
-                                    '%"' + bindparam(bind, value) + '"%'
+                                    f'%"{bindparam(bind, value)}"%'
                                 ),
                             ),
-                            # If the field is an object, use string matching. This is a workaround and has limitations.
                             (
                                 json_type == "object",
                                 json_extracted.like(
-                                    '%"' + bindparam(bind, value) + '"%'
+                                    f'%"{bindparam(bind, value)}"%'
                                 ),
                             ),
                         ],
-                        else_=json_extracted.like(
-                            bindparam(bind, value)
-                        ),  # Default case for other types like string
+                        else_=json_extracted.like(bindparam(bind, value)),
                     )
                     filters.append(condition)
                 else:
@@ -956,12 +936,13 @@ def run_rule(tenant_id, rule):
                         f"Unsupported SQL dialect for Rules Engine: {session.bind.dialect.name}"
                     )
 
-            # add the tenant_id and timeframe filters
-            filters.append(Alert.tenant_id == tenant_id)
-            # TODO: maybe timeframe should support lastReceived? but idk if there is a use case for that
-            filters.append(Alert.timestamp >= timeframe_datetime)
-            # Exclude events created by the rule engine itself
-            filters.append(Alert.provider_type != "rules")
+            filters.extend(
+                (
+                    Alert.tenant_id == tenant_id,
+                    Alert.timestamp >= timeframe_datetime,
+                    Alert.provider_type != "rules",
+                )
+            )
             # Construct and execute the ORM query
             query = session.query(Alert).filter(*filters)
             # Shahar: to get the RAW query -
@@ -972,11 +953,7 @@ def run_rule(tenant_id, rule):
             results_per_group[group] = result
 
         # if each group have at least one alert, than the run applies
-        if all(results_per_group.values()):
-            return results_per_group
-
-        # otherwise, it doesn't
-        return None
+        return results_per_group if all(results_per_group.values()) else None
 
 
 def create_alert(tenant_id, provider_type, provider_id, event, fingerprint):
@@ -996,11 +973,11 @@ def create_alert(tenant_id, provider_type, provider_id, event, fingerprint):
 
 def delete_rule(tenant_id, rule_id):
     with Session(engine) as session:
-        rule = session.exec(
-            select(Rule).where(Rule.tenant_id == tenant_id).where(Rule.id == rule_id)
-        ).first()
-
-        if rule:
+        if rule := session.exec(
+            select(Rule)
+            .where(Rule.tenant_id == tenant_id)
+            .where(Rule.id == rule_id)
+        ).first():
             session.delete(rule)
             session.commit()
             return True

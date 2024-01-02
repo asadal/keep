@@ -210,11 +210,7 @@ class ContextManager:
         return self._state
 
     def get_last_workflow_run(self, workflow_id):
-        if workflow_id in self.state:
-            return self.state[workflow_id][-1]
-        # no previous runs
-        else:
-            return {}
+        return self.state[workflow_id][-1] if workflow_id in self.state else {}
 
     def dump(self):
         self.logger.info("Dumping state file")

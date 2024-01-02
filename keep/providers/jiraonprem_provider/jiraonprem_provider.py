@@ -107,12 +107,10 @@ class JiraonpremProvider(BaseProvider):
         try:
             resp.raise_for_status()
         except Exception:
-            scopes = {
+            return {
                 scope.name: "Failed to authenticate with Jira - wrong credentials"
                 for scope in JiraonpremProvider.PROVIDER_SCOPES
             }
-            return scopes
-
         params = {
             "permissions": ",".join(
                 [scope.name for scope in JiraonpremProvider.PROVIDER_SCOPES]
@@ -127,17 +125,15 @@ class JiraonpremProvider(BaseProvider):
         try:
             resp.raise_for_status()
         except Exception as e:
-            scopes = {
+            return {
                 scope.name: f"Failed to authenticate with Jira: {e}"
                 for scope in JiraonpremProvider.PROVIDER_SCOPES
             }
-            return scopes
         permissions = resp.json().get("permissions", [])
-        scopes = {
+        return {
             scope: scope_result.get("havePermission", False)
             for scope, scope_result in permissions.items()
         }
-        return scopes
 
     def validate_config(self):
         self.authentication_config = JiraonpremProviderAuthConfig(
@@ -244,7 +240,7 @@ class JiraonpremProvider(BaseProvider):
             createmeta = self.__get_createmeta(project_key)
 
             projects = createmeta.get("projects", [])
-            project = projects[0] if len(project_key) > 0 else {}
+            project = projects[0] if project_key != "" else {}
 
             issuetypes = project.get("issuetypes", [])
             issuetype = issuetypes[0] if len(issuetypes) > 0 else {}
@@ -318,53 +314,52 @@ class JiraonpremProvider(BaseProvider):
             headers=headers,
             verify=False,
         )
-        if boards_response.status_code == 200:
-            boards = boards_response.json()["values"]
-            for board in boards:
-                if board["name"].lower() == board_name.lower():
-                    # Jira On Prem does not have the "location" in its response so we need to figure it out
-                    board_id = board["id"]
-                    # get the filter
-                    board_configuration = requests.get(
-                        f"{self.jira_host}/rest/agile/1.0/board/{board_id}/configuration",
-                        headers=headers,
-                        verify=False,
+        if boards_response.status_code != 200:
+            raise Exception(f"Could not fetch boards: {boards_response.text}")
+        boards = boards_response.json()["values"]
+        for board in boards:
+            if board["name"].lower() == board_name.lower():
+                # Jira On Prem does not have the "location" in its response so we need to figure it out
+                board_id = board["id"]
+                # get the filter
+                board_configuration = requests.get(
+                    f"{self.jira_host}/rest/agile/1.0/board/{board_id}/configuration",
+                    headers=headers,
+                    verify=False,
+                )
+                if board_configuration.status_code != 200:
+                    raise Exception(
+                        f"Could not fetch board configuration for board {board_name}"
                     )
-                    if board_configuration.status_code != 200:
-                        raise Exception(
-                            f"Could not fetch board configuration for board {board_name}"
-                        )
-                    # get the filter id
-                    filter_id = board_configuration.json()["filter"]["id"]
-                    # get the filter
-                    filter_response = requests.get(
-                        f"{self.jira_host}/rest/api/2/filter/{filter_id}",
-                        headers=headers,
-                        verify=False,
+                # get the filter id
+                filter_id = board_configuration.json()["filter"]["id"]
+                # get the filter
+                filter_response = requests.get(
+                    f"{self.jira_host}/rest/api/2/filter/{filter_id}",
+                    headers=headers,
+                    verify=False,
+                )
+                if filter_response.status_code != 200:
+                    raise Exception(
+                        f"Could not fetch filter for board {board_name}"
                     )
-                    if filter_response.status_code != 200:
-                        raise Exception(
-                            f"Could not fetch filter for board {board_name}"
-                        )
-                    # get the project key
-                    # todo: should be more robust way but that's enough for now. note that the user can use projectKey directly
-                    project_key = (
-                        filter_response.json()["jql"]
-                        .split("project = ")[1]
-                        .split(" ")[0]
-                    )
-                    self.logger.info(
-                        f"Found board {board_name} with project key {project_key}"
-                    )
-                    return project_key
+                # get the project key
+                # todo: should be more robust way but that's enough for now. note that the user can use projectKey directly
+                project_key = (
+                    filter_response.json()["jql"]
+                    .split("project = ")[1]
+                    .split(" ")[0]
+                )
+                self.logger.info(
+                    f"Found board {board_name} with project key {project_key}"
+                )
+                return project_key
 
-            # if we got here, we didn't find the board name so let's throw an indicative exception
-            board_names = [board["name"] for board in boards]
-            raise Exception(
-                f"Could not find board {board_name} - please verify your board name is in this list: {board_names}."
-            )
-        else:
-            raise Exception("Could not fetch boards: " + boards_response.text)
+        # if we got here, we didn't find the board name so let's throw an indicative exception
+        board_names = [board["name"] for board in boards]
+        raise Exception(
+            f"Could not find board {board_name} - please verify your board name is in this list: {board_names}."
+        )
 
     def _notify(
         self,

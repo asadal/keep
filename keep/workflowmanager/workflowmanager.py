@@ -43,20 +43,18 @@ class WorkflowManager:
         self.started = False
 
     def _apply_filter(self, filter_val, value):
-        # if its a regex, apply it
-        if filter_val.startswith('r"'):
-            try:
-                # remove the r" and the last "
-                pattern = re.compile(filter_val[2:-1])
-                return pattern.findall(value)
-            except Exception as e:
-                self.logger.error(
-                    f"Error applying regex filter: {filter_val} on value: {value}",
-                    extra={"exception": e},
-                )
-                return False
-        else:
+        if not filter_val.startswith('r"'):
             return value == filter_val
+        try:
+            # remove the r" and the last "
+            pattern = re.compile(filter_val[2:-1])
+            return pattern.findall(value)
+        except Exception as e:
+            self.logger.error(
+                f"Error applying regex filter: {filter_val} on value: {value}",
+                extra={"exception": e},
+            )
+            return False
 
     def insert_events(self, tenant_id, events: typing.List[AlertDto]):
         for event in events:
@@ -81,7 +79,7 @@ class WorkflowManager:
                     continue
                 for trigger in workflow.workflow_triggers:
                     # TODO: handle it better
-                    if not trigger.get("type") == "alert":
+                    if trigger.get("type") != "alert":
                         continue
                     should_run = True
                     for filter in trigger.get("filters", []):
@@ -134,8 +132,9 @@ class WorkflowManager:
                         event.trigger = "alert"
                         # prepare the alert with the enrichment
                         self.logger.info("Enriching alert")
-                        alert_enrichment = get_enrichment(tenant_id, event.fingerprint)
-                        if alert_enrichment:
+                        if alert_enrichment := get_enrichment(
+                            tenant_id, event.fingerprint
+                        ):
                             for k, v in alert_enrichment.enrichments.items():
                                 setattr(event, k, v)
                         self.logger.info("Alert enriched")
@@ -151,21 +150,20 @@ class WorkflowManager:
 
     def _get_event_value(self, event, filter_key):
         # if the filter key is a nested key, get the value
-        if "." in filter_key:
-            filter_key_split = filter_key.split(".")
-            # event is alert dto so we need getattr
-            event_val = getattr(event, filter_key_split[0], None)
+        if "." not in filter_key:
+            return getattr(event, filter_key, None)
+        filter_key_split = filter_key.split(".")
+        # event is alert dto so we need getattr
+        event_val = getattr(event, filter_key_split[0], None)
+        if not event_val:
+            return None
+        # iterate the other keys
+        for key in filter_key_split[1:]:
+            event_val = event_val.get(key, None)
+            # if the key doesn't exist, return None because we didn't find the value
             if not event_val:
                 return None
-            # iterate the other keys
-            for key in filter_key_split[1:]:
-                event_val = event_val.get(key, None)
-                # if the key doesn't exist, return None because we didn't find the value
-                if not event_val:
-                    return None
-            return event_val
-        else:
-            return getattr(event, filter_key, None)
+        return event_val
 
     # TODO should be fixed to support the usual CLI
     def run(self, workflows: list[Workflow]):
@@ -180,7 +178,7 @@ class WorkflowManager:
         workflows_errors = []
         # If at least one workflow has an interval, run workflows using the scheduler,
         #   otherwise, just run it
-        if any([Workflow.workflow_interval for Workflow in workflows]):
+        if any(Workflow.workflow_interval for Workflow in workflows):
             # running workglows in scheduler mode
             self.logger.info(
                 "Found at least one workflow with an interval, running in scheduler mode"

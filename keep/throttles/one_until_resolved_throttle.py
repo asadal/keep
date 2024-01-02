@@ -12,11 +12,8 @@ class OneUntilResolvedThrottle(BaseThrottle):
         super().__init__(throttle_type, throttle_config)
 
     def check_throttling(self, action_name, alert_id, **kwargs) -> bool:
-        last_alert_run = self.context_manager.get_last_workflow_run(alert_id)
-        if not last_alert_run:
+        if last_alert_run := self.context_manager.get_last_workflow_run(alert_id):
+                # if the last time the alert were triggered it was in resolved status, return false
+            return last_alert_run.get("alert_status").lower() != "resolved"
+        else:
             return False
-        # if the last time the alert were triggered it was in resolved status, return false
-        if last_alert_run.get("alert_status").lower() == "resolved":
-            return False
-        # else, return true because its already firing
-        return True

@@ -152,7 +152,7 @@ def get_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    if not os.getenv("DISABLE_POSTHOG", "false") == "true":
+    if os.getenv("DISABLE_POSTHOG", "false") != "true":
         app.add_middleware(EventCaptureMiddleware)
     # app.add_middleware(GZipMiddleware)
 

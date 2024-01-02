@@ -38,8 +38,7 @@ class WorkflowDTO(BaseModel):
 
     @property
     def workflow_raw_id(self):
-        id = yaml.safe_load(self.workflow_raw).get("id")
-        return id
+        return yaml.safe_load(self.workflow_raw).get("id")
 
     @validator("workflow_raw", pre=False, always=True)
     def manipulate_raw(cls, raw, values):

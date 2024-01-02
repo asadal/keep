@@ -118,8 +118,7 @@ receivers:
         if not response.ok:
             return []
         alerts_data = response.json().get("data", {})
-        alert_dtos = self.format_alert(alerts_data)
-        return alert_dtos
+        return self.format_alert(alerts_data)
 
     @staticmethod
     def format_alert(event: dict) -> list[AlertDto]:

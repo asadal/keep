@@ -105,8 +105,7 @@ class BigqueryProvider(BaseProvider):
     def _query(self, query: str):
         self.init_client()
         query_job = self.client.query(query)
-        results = list(query_job.result())
-        return results
+        return list(query_job.result())
 
     def get_alerts_configuration(self, alert_id: Optional[str] = None):
         pass  # Define how to get alerts from BigQuery if applicable
@@ -160,4 +159,4 @@ if __name__ == "__main__":
 
     # Print the results
     for row in results:
-        print("{}: {}".format(row.name, row.num))
+        print(f"{row.name}: {row.num}")

@@ -150,12 +150,12 @@ class KafkaProvider(BaseProvider):
         if self.authentication_config.topic in topics:
             self.logger.info(f"Topic {self.authentication_config.topic} exists")
             scopes["topic_read"] = True
-            return scopes
         else:
             self.err = f"The user have permission to Kafka, but topic '{self.authentication_config.topic}' does not exist or the user does not have permissions to read it - available topics: {consumer.topics()}"
             self.logger.warning(self.err)
             scopes["topic_read"] = self.err
-            return scopes
+
+        return scopes
 
     def dispose(self):
         """
@@ -249,7 +249,6 @@ class KafkaProvider(BaseProvider):
                             self._push_alert(record.value)
                         except Exception:
                             self.logger.warning("Error pushing alert to API")
-                            pass
             except Exception:
                 self.logger.exception("Error consuming message from Kafka")
                 break

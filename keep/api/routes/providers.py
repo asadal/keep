@@ -45,14 +45,7 @@ def _is_localhost():
     if "localhost" in api_url:
         return True
 
-    if "127.0.0" in api_url:
-        return True
-
-    # default on localhost if no USE_NGROK
-    if "0.0.0.0" in api_url:
-        return True
-
-    return False
+    return True if "127.0.0" in api_url else "0.0.0.0" in api_url
 
 
 @router.get(
@@ -272,11 +265,8 @@ def delete_provider(
         ).one()
         try:
             secret_manager.delete_secret(provider.configuration_key)
-        # in case the secret does not deleted, just log it but still
-        # delete the provider so
         except Exception:
             logger.exception("Failed to delete the provider secret")
-            pass
         # delete the provider anyway
         session.delete(provider)
         session.commit()
@@ -285,8 +275,6 @@ def delete_provider(
     except Exception:
         # TODO: handle it better
         logger.exception("Failed to delete the provider secret")
-        pass
-
     if provider.consumer:
         # Unregister the provider as a consumer
         try:

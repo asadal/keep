@@ -152,12 +152,9 @@ class PlannerProvider(BaseProvider):
         # to verify if the plan with plan_id exists or not
         self.__get_plan_by_id(plan_id=plan_id)
 
-        # create a new task in given plan
-        created_task = self.__create_task(
+        return self.__create_task(
             plan_id=plan_id, title=title, bucket_id=bucket_id
         )
-
-        return created_task
 
 
 if __name__ == "__main__":

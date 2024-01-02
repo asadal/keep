@@ -26,16 +26,12 @@ class AlertDto(BaseModel):
 
     @validator("fingerprint", pre=True, always=True)
     def assign_fingerprint_if_none(cls, fingerprint, values):
-        if fingerprint is None:
-            return values.get("name", "")
-        return fingerprint
+        return values.get("name", "") if fingerprint is None else fingerprint
 
     @validator("deleted", pre=True, always=True)
     def validate_old_deleted(cls, deleted, values):
         """This is a temporary validator to handle the old deleted field"""
-        if isinstance(deleted, bool):
-            return []
-        return deleted
+        return [] if isinstance(deleted, bool) else deleted
 
     class Config:
         extra = Extra.allow
