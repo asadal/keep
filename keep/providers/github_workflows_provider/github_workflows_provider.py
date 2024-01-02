@@ -57,10 +57,9 @@ class GithubWorkflowsProvider(BaseProvider):
             extra={
                 "body": result["body"],
                 "headers": result["headers"],
-                "status_code": result["status"],
+                "status_code": response_status,
             },
         )
-
         return result
 
     def _query(self, url: str, method: str, **kwargs: dict):

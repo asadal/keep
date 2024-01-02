@@ -41,7 +41,7 @@ def create_preset(
     logger.info("Creating preset")
     if not body.options or not body.name:
         raise HTTPException(400, "Options and name are required")
-    if body.name == "Feed" or body.name == "Deleted":
+    if body.name in ["Feed", "Deleted"]:
         raise HTTPException(400, "Cannot create preset with this name")
     options_dict = [option.dict() for option in body.options]
     preset = Preset(tenant_id=tenant_id, options=options_dict, name=body.name)
@@ -92,7 +92,7 @@ def update_preset(
     if not preset:
         raise HTTPException(404, "Preset not found")
     if body.name:
-        if body.name == "Feed" or body.name == "Deleted":
+        if body.name in ["Feed", "Deleted"]:
             raise HTTPException(400, "Cannot create preset with this name")
         if body.name != preset.name:
             preset.name = body.name

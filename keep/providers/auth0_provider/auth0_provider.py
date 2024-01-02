@@ -89,8 +89,7 @@ class Auth0Provider(BaseProvider):
             ] = f"({params['q']}) AND (date:[{from_} TO {datetime.datetime.now().isoformat()}])"
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        logs = response.json()
-        return logs
+        return response.json()
 
     def dispose(self):
         pass
@@ -103,7 +102,7 @@ class Auth0LogsProvider(Auth0Provider):
         self.logger.debug(f"Previous users: {previous_users}")
         previous_users_count = len(previous_users)
         users_count = len(logs)
-        self.logger.debug(f"New users: {users_count - int(previous_users_count)}")
+        self.logger.debug(f"New users: {users_count - previous_users_count}")
         new_users = []
         for log in logs:
             if log["user_id"] not in previous_users:

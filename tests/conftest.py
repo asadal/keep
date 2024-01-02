@@ -95,8 +95,6 @@ def is_mysql_responsive(host, port, user, password, database):
 
     except Exception:
         print("Mysql still not up")
-        pass
-
     return False
 
 

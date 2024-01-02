@@ -84,8 +84,7 @@ class SshProvider(BaseProvider):
         port = self.authentication_config.port
         user = self.authentication_config.user
 
-        private_key = self.authentication_config.pkey
-        if private_key:
+        if private_key := self.authentication_config.pkey:
             # Connect using private key
             private_key_file = io.StringIO(private_key)
             private_key_file.seek(0)

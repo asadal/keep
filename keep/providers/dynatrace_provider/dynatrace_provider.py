@@ -99,16 +99,15 @@ class DynatraceProvider(BaseProvider):
                 "Authorization": f"Api-Token {self.authentication_config.api_token}"
             },
         )
-        if not response.ok:
-            self.logger.exception(
-                f"Failed to get problems from Dynatrace: {response.text}"
-            )
-            raise Exception(f"Failed to get problems from Dynatrace: {response.text}")
-        else:
+        if response.ok:
             return [
                 self.format_alert(event)
                 for event in response.json().get("problems", [])
             ]
+        self.logger.exception(
+            f"Failed to get problems from Dynatrace: {response.text}"
+        )
+        raise Exception(f"Failed to get problems from Dynatrace: {response.text}")
 
     def validate_scopes(self):
         self.logger.info("Validating dynatrace scopes")
@@ -367,27 +366,26 @@ class DynatraceProvider(BaseProvider):
                 "Authorization": f"Api-Token {self.authentication_config.api_token}"
             },
         )
-        if not response.ok:
-            # understand if its localhost:
-            violation_message = (
-                response.json()[0]
-                .get("error")
-                .get("constraintViolations")[0]
-                .get("message")
-            )
-            if (
-                violation_message
-                == "The environment does not allow for site-local URLs"
-            ):
-                raise Exception(
-                    "Dynatrace doesn't support use localhost as a webhook URL, use a public URL when installing dynatrace webhook."
-                )
-            else:
-                raise Exception(
-                    f"Failed to setup Dynatrace webhook: {response.status_code} {response.text}"
-                )
-        else:
+        if response.ok:
             return True
+        # understand if its localhost:
+        violation_message = (
+            response.json()[0]
+            .get("error")
+            .get("constraintViolations")[0]
+            .get("message")
+        )
+        if (
+            violation_message
+            == "The environment does not allow for site-local URLs"
+        ):
+            raise Exception(
+                "Dynatrace doesn't support use localhost as a webhook URL, use a public URL when installing dynatrace webhook."
+            )
+        else:
+            raise Exception(
+                f"Failed to setup Dynatrace webhook: {response.status_code} {response.text}"
+            )
 
     def dispose(self):
         """

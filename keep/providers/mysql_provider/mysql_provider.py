@@ -73,13 +73,12 @@ class MysqlProvider(BaseProvider):
         Returns:
             mysql.connector.CMySQLConnection: MySQL Client
         """
-        client = mysql.connector.connect(
+        return mysql.connector.connect(
             user=self.authentication_config.username,
             password=self.authentication_config.password,
             host=self.authentication_config.host,
             database=self.authentication_config.database,
         )
-        return client
 
     def dispose(self):
         try:
@@ -114,10 +113,7 @@ class MysqlProvider(BaseProvider):
         results = cursor.fetchall()
 
         cursor.close()
-        if single_row:
-            return results[0]
-
-        return results
+        return results[0] if single_row else results
 
 
 if __name__ == "__main__":

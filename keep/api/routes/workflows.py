@@ -89,20 +89,15 @@ def get_workflows(
                 )
                 providers_dto.append(provider_dto)
             except KeyError:
-                # the provider is not installed, now we want to check:
-                # 1. if the provider requires any config - so its not instaleld
-                # 2. if the provider does not require any config - consider it as installed
-                conf = ProvidersFactory.get_provider_required_config(
+                if conf := ProvidersFactory.get_provider_required_config(
                     provider.get("type")
-                )
-                if conf:
+                ):
                     provider_dto = ProviderDTO(
                         name=provider.get("name"),
                         type=provider.get("type"),
                         id=None,
                         installed=False,
                     )
-                # if the provider does not require any config, consider it as installed
                 else:
                     provider_dto = ProviderDTO(
                         name=provider.get("name"),
@@ -180,10 +175,7 @@ def run_workflow(
 async def __get_workflow_raw_data(request: Request, file: UploadFile) -> dict:
     try:
         # we support both File upload (from frontend) or raw yaml (e.g. curl)
-        if file:
-            workflow_raw_data = await file.read()
-        else:
-            workflow_raw_data = await request.body()
+        workflow_raw_data = await file.read() if file else await request.body()
         workflow_data = yaml.safe_load(workflow_raw_data)
         # backward comptability
         if "alert" in workflow_data:
@@ -333,7 +325,7 @@ def get_workflow_execution_status(
         workflow_execution_id=workflow_execution_id,
         tenant_id=tenant_id,
     )
-    workflow_execution_dto = WorkflowExecutionDTO(
+    return WorkflowExecutionDTO(
         id=workflow_execution.id,
         workflow_id=workflow_execution.workflow_id,
         status=workflow_execution.status,
@@ -352,7 +344,6 @@ def get_workflow_execution_status(
         ],
         results=workflow_execution.results,
     )
-    return workflow_execution_dto
 
 
 # todo: move to better URL

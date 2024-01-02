@@ -111,7 +111,6 @@ class Info:
             logger.debug(
                 "Configuration file could not be found. Running without configuration."
             )
-            pass
         self.api_key = self.config.get("api_key") or os.getenv("KEEP_API_KEY") or ""
         self.keep_api_url = (
             self.config.get("keep_api_url")
@@ -244,7 +243,7 @@ def whoami(info: Info):
     try:
         resp = make_keep_request(
             "GET",
-            info.keep_api_url + "/whoami",
+            f"{info.keep_api_url}/whoami",
             headers={"x-api-key": info.api_key, "accept": "application/json"},
         )
     except requests.exceptions.ConnectionError:
@@ -268,10 +267,7 @@ def api(multi_tenant: bool):
     from keep.api import api
 
     ctx = click.get_current_context()
-    if multi_tenant:
-        auth_type = "MULTI_TENANT"
-    else:
-        auth_type = "NO_AUTH"
+    auth_type = "MULTI_TENANT" if multi_tenant else "NO_AUTH"
     app = api.get_app(auth_type=auth_type)
     logger.info(f"App initialized, multi tenancy: {multi_tenant}")
     app.dependency_overrides[click.get_current_context] = lambda: ctx
@@ -405,7 +401,7 @@ def list_workflows(info: Info):
     """List workflows."""
     resp = make_keep_request(
         "GET",
-        info.keep_api_url + "/workflows",
+        f"{info.keep_api_url}/workflows",
         headers={"x-api-key": info.api_key, "accept": "application/json"},
     )
     if not resp.ok:
@@ -449,14 +445,13 @@ def apply_workflow(file: str, info: Info):
     """Helper function to apply a single workflow."""
     with open(file, "rb") as f:
         files = {"file": (os.path.basename(file), f)}
-        workflow_endpoint = info.keep_api_url + "/workflows"
-        response = make_keep_request(
+        workflow_endpoint = f"{info.keep_api_url}/workflows"
+        return make_keep_request(
             "POST",
             workflow_endpoint,
             headers={"x-api-key": info.api_key, "accept": "application/json"},
             files=files,
         )
-        return response
 
 
 @workflow.command()
@@ -529,7 +524,7 @@ def run_workflow(info: Info, workflow_id: str, fingerprint: str):
     payload = payload.json()
 
     # Run the workflow with the fetched payload as the request body
-    workflow_endpoint = info.keep_api_url + f"/workflows/{workflow_id}/run"
+    workflow_endpoint = f"{info.keep_api_url}/workflows/{workflow_id}/run"
     response = make_keep_request(
         "POST",
         workflow_endpoint,
@@ -566,7 +561,7 @@ def list_workflow_executions(info: Info):
     """List workflow executions."""
     resp = make_keep_request(
         "GET",
-        info.keep_api_url + "/workflows/executions/list",
+        f"{info.keep_api_url}/workflows/executions/list",
         headers={"x-api-key": info.api_key, "accept": "application/json"},
     )
     if not resp.ok:
@@ -614,9 +609,7 @@ def get_workflow_execution_logs(info: Info, workflow_execution_id: str):
     """Get workflow execution logs."""
     resp = make_keep_request(
         "GET",
-        info.keep_api_url
-        + "/workflows/executions/list?workflow_execution_id="
-        + workflow_execution_id,
+        f"{info.keep_api_url}/workflows/executions/list?workflow_execution_id={workflow_execution_id}",
         headers={"x-api-key": info.api_key, "accept": "application/json"},
     )
     if not resp.ok:
@@ -627,13 +620,12 @@ def get_workflow_execution_logs(info: Info, workflow_execution_id: str):
     workflow_execution_logs = workflow_executions[0].get("logs", [])
     # Create a new table
     table = PrettyTable()
-    # Add column headers
+    table.align["Message"] = "l"
     table.field_names = [
         "ID",
         "Timestamp",
         "Message",
     ]
-    table.align["Message"] = "l"
     # Add rows for each workflow execution
     for log in workflow_execution_logs:
         table.add_row([log["id"], log["timestamp"], log["message"]])
@@ -660,7 +652,7 @@ def list_providers(info: Info, available: bool):
     """List providers."""
     resp = make_keep_request(
         "GET",
-        info.keep_api_url + "/providers",
+        f"{info.keep_api_url}/providers",
         headers={"x-api-key": info.api_key, "accept": "application/json"},
     )
     if not resp.ok:
@@ -726,7 +718,7 @@ def connect(ctx, help: bool, provider_name, provider_type, params):
     info = ctx.ensure_object(Info)
     resp = make_keep_request(
         "GET",
-        info.keep_api_url + "/providers",
+        f"{info.keep_api_url}/providers",
         headers={"x-api-key": info.api_key, "accept": "application/json"},
     )
     if not resp.ok:
@@ -797,33 +789,32 @@ def connect(ctx, help: bool, provider_name, provider_type, params):
     # Install the provider
     resp = make_keep_request(
         "POST",
-        info.keep_api_url + "/providers/install",
+        f"{info.keep_api_url}/providers/install",
         headers={"x-api-key": info.api_key, "accept": "application/json"},
         json=provider_install_payload,
     )
-    if not resp.ok:
-        # installation failed because the credentials are invalid
-        if resp.status_code == 412:
-            click.echo(
-                click.style("Failed to install provider: invalid scopes", bold=True)
-            )
-            table = PrettyTable()
-            table.field_names = ["Scope Name", "Status"]
-            for scope, value in resp.json().get("detail").items():
-                table.add_row([scope, value])
-            print(table)
-        else:
-            click.echo(
-                click.style(
-                    f"Error installing provider {provider_name}: {resp.text}", bold=True
-                )
-            )
-    else:
+    if resp.ok:
         resp = resp.json()
         click.echo(
             click.style(f"Provider {provider_name} installed successfully", bold=True)
         )
         click.echo(click.style(f"Provider id: {resp.get('id')}", bold=True))
+
+    elif resp.status_code == 412:
+        click.echo(
+            click.style("Failed to install provider: invalid scopes", bold=True)
+        )
+        table = PrettyTable()
+        table.field_names = ["Scope Name", "Status"]
+        for scope, value in resp.json().get("detail").items():
+            table.add_row([scope, value])
+        print(table)
+    else:
+        click.echo(
+            click.style(
+                f"Error installing provider {provider_name}: {resp.text}", bold=True
+            )
+        )
 
 
 @provider.command()
@@ -837,34 +828,33 @@ def delete(ctx, provider_id):
     dummy_provider_type = "dummy"
     resp = make_keep_request(
         "DELETE",
-        info.keep_api_url + f"/providers/{dummy_provider_type}/{provider_id}",
+        f"{info.keep_api_url}/providers/{dummy_provider_type}/{provider_id}",
         headers={"x-api-key": info.api_key, "accept": "application/json"},
     )
-    if not resp.ok:
-        if resp.status_code == 404:
-            click.echo(
-                click.style(f"Provider {provider_id} not found", bold=True, fg="red")
-            )
-        else:
-            click.echo(
-                click.style(
-                    f"Error deleting provider {provider_id}: {resp.text}", bold=True
-                )
-            )
-    else:
+    if resp.ok:
         click.echo(
             click.style(f"Provider {provider_id} deleted successfully", bold=True)
+        )
+
+    elif resp.status_code == 404:
+        click.echo(
+            click.style(f"Provider {provider_id} not found", bold=True, fg="red")
+        )
+    else:
+        click.echo(
+            click.style(
+                f"Error deleting provider {provider_id}: {resp.text}", bold=True
+            )
         )
 
 
 def _get_alert_by_fingerprint(keep_url, api_key, fingerprint: str):
     """Get an alert by fingerprint."""
-    resp = make_keep_request(
+    return make_keep_request(
         "GET",
-        keep_url + f"/alerts/{fingerprint}",
+        f"{keep_url}/alerts/{fingerprint}",
         headers={"x-api-key": api_key, "accept": "application/json"},
     )
-    return resp
 
 
 @cli.group()
@@ -885,9 +875,8 @@ def get_alert(info: Info, fingerprint: str):
     resp = _get_alert_by_fingerprint(info.keep_api_url, info.api_key, fingerprint)
     if not resp.ok:
         raise Exception(f"Error getting alert: {resp.text}")
-    else:
-        alert = resp.json()
-        print(json.dumps(alert, indent=4))
+    alert = resp.json()
+    print(json.dumps(alert, indent=4))
 
 
 @alert.command(name="list")
@@ -906,7 +895,7 @@ def list_alerts(info: Info, filter: typing.List[str], export: bool):
     """List alerts."""
     resp = make_keep_request(
         "GET",
-        info.keep_api_url + "/alerts?sync=true",
+        f"{info.keep_api_url}/alerts?sync=true",
         headers={"x-api-key": info.api_key, "accept": "application/json"},
     )
     if not resp.ok:
@@ -927,12 +916,13 @@ def list_alerts(info: Info, filter: typing.List[str], export: bool):
         _alerts = []
         for alert in alerts:
             val = alert.get(key)
-            if isinstance(val, list):
-                if value in val:
-                    _alerts.append(alert)
-            else:
-                if val == value:
-                    _alerts.append(alert)
+            if (
+                isinstance(val, list)
+                and value in val
+                or not isinstance(val, list)
+                and val == value
+            ):
+                _alerts.append(alert)
         alerts = _alerts
 
     # If --export option is provided
@@ -1059,8 +1049,6 @@ def login(info: Info):
             "Authenticated successfully, you can close this tab now, Keep rulezzz!"
         )
 
-    # We needed a way to run a server without blocking the main thread:
-    #   https://github.com/encode/uvicorn/discussions/1103#discussioncomment-1389875
     class UvicornServer:
         def __init__(self):
             super().__init__()
@@ -1103,8 +1091,11 @@ def login(info: Info):
     id_token = token["id_token"]
     api_key_resp = make_keep_request(
         "GET",
-        info.keep_api_url + "/settings/apikey",
-        headers={"accept": "application/json", "Authorization": f"Bearer {id_token}"},
+        f"{info.keep_api_url}/settings/apikey",
+        headers={
+            "accept": "application/json",
+            "Authorization": f"Bearer {id_token}",
+        },
     )
     if not api_key_resp.ok:
         print(f"Error getting api key: {api_key_resp.text}")
@@ -1120,7 +1111,7 @@ def login(info: Info):
     # Check that we can get whoami
     resp = make_keep_request(
         "GET",
-        info.keep_api_url + "/whoami",
+        f"{info.keep_api_url}/whoami",
         headers={"x-api-key": api_key, "accept": "application/json"},
     )
     if not resp.ok:

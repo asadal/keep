@@ -117,8 +117,7 @@ class MongodbProvider(BaseProvider):
             and k != "additional_options"  # additional_options will go seperately
             and k != "database"
         }  # database is not a valid mongo option
-        client = MongoClient(**client_conf, **additional_options)
-        return client
+        return MongoClient(**client_conf, **additional_options)
 
     def dispose(self):
         try:

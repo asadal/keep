@@ -153,8 +153,7 @@ class CloudwatchProvider(BaseProvider):
             iam_client = self.__generate_client("iam")
         except Exception as e:
             self.logger.exception("Error validating AWS IAM scopes")
-            scopes = {s: str(e) for s in scopes.keys()}
-            return scopes
+            return {s: str(e) for s in scopes}
         # 0. try to validate all scopes using simulate_principal_policy
         #    if the user/role have permissions to simulate_principal_policy, we can validate the scopes easily
         try:
@@ -236,7 +235,7 @@ class CloudwatchProvider(BaseProvider):
                 queryString="keepTest",
                 startTime=int(
                     (
-                        datetime.datetime.today() - datetime.timedelta(hours=24)
+                        datetime.datetime.now() - datetime.timedelta(hours=24)
                     ).timestamp()
                 ),
                 endTime=int(datetime.datetime.now().timestamp()),
@@ -287,7 +286,7 @@ class CloudwatchProvider(BaseProvider):
                 queryString=query,
                 startTime=int(
                     (
-                        datetime.datetime.today() - datetime.timedelta(hours=hours)
+                        datetime.datetime.now() - datetime.timedelta(hours=hours)
                     ).timestamp()
                 ),
                 endTime=int(datetime.datetime.now().timestamp()),
@@ -315,8 +314,7 @@ class CloudwatchProvider(BaseProvider):
                 )
                 raise
 
-        results = response.get("results")
-        return results
+        return response.get("results")
 
     def _get_account_id(self):
         sts_client = self.__generate_client("sts")
@@ -424,7 +422,7 @@ class CloudwatchProvider(BaseProvider):
                 hostname = urlparse(keep_api_url).hostname
                 already_subscribed = any(
                     hostname in sub["Endpoint"]
-                    and not sub["SubscriptionArn"] == "PendingConfirmation"
+                    and sub["SubscriptionArn"] != "PendingConfirmation"
                     for sub in subscriptions
                 )
                 if not already_subscribed:

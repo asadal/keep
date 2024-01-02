@@ -489,7 +489,7 @@ class ZabbixProvider(BaseProvider):
             if username == "guest":
                 self.logger.debug("skipping guest user")
                 continue
-            media_exists = next(
+            if media_exists := next(
                 iter(
                     [
                         m
@@ -498,8 +498,7 @@ class ZabbixProvider(BaseProvider):
                     ]
                 ),
                 None,
-            )
-            if media_exists:
+            ):
                 self.logger.info(f"skipping user {username} because media exists")
             else:
                 current_user_medias = user.get("medias", [])
@@ -537,11 +536,11 @@ class ZabbixProvider(BaseProvider):
 
     @staticmethod
     def __get_severity(priority: str):
-        if priority == "disaster" or priority == "5":
+        if priority in {"disaster", "5"}:
             return "critical"
-        elif priority == "high" or priority == "4":
+        elif priority in {"high", "4"}:
             return "high"
-        elif priority == "average" or priority == "3":
+        elif priority in {"average", "3"}:
             return "medium"
         else:
             return "low"

@@ -39,12 +39,11 @@ class GithubProvider(BaseProvider):
         self.client = self.__generate_client()
 
     def __generate_client(self):
-        # Should get an access token once we have a real use case for GitHub provider
-        if self.authentication_config.access_token:
-            client = Github(self.authentication_config.access_token)
-        else:
-            client = Github()
-        return client
+        return (
+            Github(self.authentication_config.access_token)
+            if self.authentication_config.access_token
+            else Github()
+        )
 
     def dispose(self):
         """
@@ -79,10 +78,10 @@ class GithubStarsProvider(GithubProvider):
             previous_stars_count = 0
 
         self.logger.debug(f"Previous stargazers: {previous_stars_count}")
-        self.logger.debug(f"New stargazers: {stars_count - int(previous_stars_count)}")
-        if previous_stars_count and int(previous_stars_count) > 0:
+        self.logger.debug(f"New stargazers: {stars_count - previous_stars_count}")
+        if previous_stars_count and previous_stars_count > 0:
             stargazers_with_dates = list(repo.get_stargazers_with_dates())[
-                int(previous_stars_count) :
+                previous_stars_count:
             ]
             for stargazer in stargazers_with_dates:
                 new_stargazers.append(

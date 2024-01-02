@@ -53,7 +53,6 @@ class WorkflowScheduler:
             workflows = get_workflows_that_should_run()
         except Exception as e:
             self.logger.error(f"Error getting workflows that should run: {e}")
-            pass
         for workflow in workflows:
             self.logger.info("Running workflow on background")
             try:
@@ -280,7 +279,6 @@ class WorkflowScheduler:
                 # This is the "mainloop" of the scheduler, we don't want to crash it
                 # But any exception here should be investigated
                 self.logger.error(f"Error getting workflows that should run: {e}")
-                pass
             self.logger.debug("Sleeping until next iteration")
             time.sleep(1)
         self.logger.info("Workflows scheduler stopped")
@@ -317,7 +315,7 @@ class WorkflowScheduler:
         Args:
             workflow (Workflow): The workflow to run.
         """
-        while True and not self._stop:
+        while not self._stop:
             self.logger.info(f"Running workflow {workflow.workflow_id}...")
             try:
                 self.workflow_manager._run_workflow(workflow, uuid.uuid4())

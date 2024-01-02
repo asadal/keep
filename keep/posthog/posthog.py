@@ -12,5 +12,4 @@ def get_posthog_client():
         os.getenv("POSTHOG_API_KEY")
         or "phc_muk9qE3TfZsX3SZ9XxX52kCGJBclrjhkP9JxAQcm1PZ"
     )
-    posthog_client = Posthog(api_key=posthog_api_key, host="https://app.posthog.com")
-    return posthog_client
+    return Posthog(api_key=posthog_api_key, host="https://app.posthog.com")

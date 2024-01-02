@@ -66,10 +66,7 @@ class PlannerProvider(BaseProvider):
             self.authentication_config.client_id,
             self.authentication_config.client_secret,
         )
-        access_token = credential.get_token(
-            scopes=self.authentication_config.scopes
-        ).token
-        return access_token
+        return credential.get_token(scopes=self.authentication_config.scopes).token
 
     def dispose(self):
         pass
@@ -128,12 +125,9 @@ class PlannerProvider(BaseProvider):
         # To verify if the plan with plan_id exists or not
         self.__get_plan_by_id(plan_id=plan_id)
 
-        # Create a new task in the given plan
-        created_task = self.__create_task(
+        return self.__create_task(
             plan_id=plan_id, title=title, bucket_id=bucket_id
         )
-
-        return created_task
 
 
 if __name__ == "__main__":

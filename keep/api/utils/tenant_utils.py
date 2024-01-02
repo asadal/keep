@@ -95,8 +95,11 @@ def get_or_create_api_key(
         .where(TenantApiKey.reference_id == unique_api_key_id)
         .where(TenantApiKey.tenant_id == tenant_id)
     )
-    tenant_api_key_entry = session.exec(statement).first()
-    if not tenant_api_key_entry:
+    if tenant_api_key_entry := session.exec(statement).first():
+        context_manager = ContextManager(tenant_id=tenant_id)
+        secret_manager = SecretManagerFactory.get_secret_manager(context_manager)
+        tenant_api_key = secret_manager.read_secret(f"{tenant_id}-{unique_api_key_id}")
+    else:
         tenant_api_key = create_api_key(
             session,
             tenant_id,
@@ -105,10 +108,6 @@ def get_or_create_api_key(
             is_system=True,
             system_description=system_description,
         )
-    else:
-        context_manager = ContextManager(tenant_id=tenant_id)
-        secret_manager = SecretManagerFactory.get_secret_manager(context_manager)
-        tenant_api_key = secret_manager.read_secret(f"{tenant_id}-{unique_api_key_id}")
     logger.info(
         "Got API key",
         extra={"tenant_id": tenant_id, "unique_api_key_id": unique_api_key_id},

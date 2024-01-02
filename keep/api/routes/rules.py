@@ -139,7 +139,7 @@ async def update_rule(
     if not timeframe:
         raise HTTPException(status_code=400, detail="Timeframe is required")
 
-    rule = update_rule_db(
+    if rule := update_rule_db(
         tenant_id=tenant_id,
         rule_id=rule_id,
         name=rule_name,
@@ -150,9 +150,7 @@ async def update_rule(
         timeframe=timeframe,
         definition_cel=cel_query,
         updated_by=updated_by,
-    )
-
-    if rule:
+    ):
         logger.info(f"Rule {rule_id} updated")
         return rule
     else:

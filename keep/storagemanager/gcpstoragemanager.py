@@ -42,8 +42,7 @@ class GcpStorageManager(BaseStorageManager):
             else:
                 self.logger.warning(f"Reason: {exc}")
                 raise exc
-        f = blob.download_as_string()
-        return f
+        return blob.download_as_string()
 
     def get_files(self, tenant_id) -> list[str]:
         """

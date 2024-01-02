@@ -83,12 +83,11 @@ class SnowflakeProvider(BaseProvider):
             encryption_algorithm=serialization.NoEncryption(),
         )
 
-        snowflake_connection = connect(
+        return connect(
             user=self.authentication_config.user,
             account=self.authentication_config.account,
             private_key=private_key_bytes,
         )
-        return snowflake_connection
 
     def dispose(self):
         try:

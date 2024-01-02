@@ -30,10 +30,9 @@ class KeepProvider(BaseProvider):
         """
         Query Keep for alerts.
         """
-        alerts = get_alerts_with_filters(
+        return get_alerts_with_filters(
             self.context_manager.tenant_id, filters=filters
         )
-        return alerts
 
     def validate_config(self):
         """

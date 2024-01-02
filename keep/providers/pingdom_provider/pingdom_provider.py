@@ -129,8 +129,7 @@ class PingdomProvider(BaseProvider):
 
     @staticmethod
     def format_alert(event: dict) -> AlertDto:
-        # https://pingdom.com/resources/webhooks/#Examples-of-webhook-JSON-output-for-uptime-checks
-        alert = AlertDto(
+        return AlertDto(
             id=event.get("check_id"),
             fingerprint=event.get("check_id"),
             name=event.get("check_name"),
@@ -152,7 +151,6 @@ class PingdomProvider(BaseProvider):
             first_probe=event.get("first_probe", None),
             second_probe=event.get("second_probe", None),
         )
-        return alert
 
 
 if __name__ == "__main__":

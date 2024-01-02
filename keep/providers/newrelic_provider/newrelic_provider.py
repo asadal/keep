@@ -150,7 +150,7 @@ class NewrelicProvider(BaseProvider):
 
     def validate_scopes(self) -> dict[str, bool | str]:
         scopes = {scope.name: False for scope in self.PROVIDER_SCOPES}
-        read_scopes = [key for key in scopes.keys() if "read" in key]
+        read_scopes = [key for key in scopes if "read" in key]
 
         try:
             """
@@ -208,7 +208,7 @@ class NewrelicProvider(BaseProvider):
             )
             return scopes
 
-        write_scopes = [key for key in scopes.keys() if "write" in key]
+        write_scopes = [key for key in scopes if "write" in key]
         try:
             """
             Checking if destination can be created
@@ -408,8 +408,7 @@ class NewrelicProvider(BaseProvider):
     @staticmethod
     def format_alert(event: dict) -> AlertDto:
         """We are already registering template same as generic AlertDTO"""
-        lastReceived = event["lastReceived"] if "lastReceived" in event else None
-        if lastReceived:
+        if lastReceived := event.get("lastReceived", None):
             lastReceived = datetime.utcfromtimestamp(lastReceived / 1000).strftime(
                 "%Y-%m-%d %H:%M:%S"
             )
@@ -496,10 +495,9 @@ class NewrelicProvider(BaseProvider):
                 self.new_relic_graphql_url, headers=self.__headers, json=query
             )
 
-            new_id = response.json()["data"]["aiNotificationsCreateDestination"][
+            return response.json()["data"]["aiNotificationsCreateDestination"][
                 "destination"
             ]["id"]
-            return new_id
         except Exception:
             self.logger.exception("Error creating destination for webhook")
 
@@ -594,11 +592,9 @@ class NewrelicProvider(BaseProvider):
             response = requests.post(
                 self.new_relic_graphql_url, headers=self.__headers, json=query
             )
-            # print(response.json())
-            new_id = response.json()["data"]["aiNotificationsCreateChannel"]["channel"][
-                "id"
-            ]
-            return new_id
+            return response.json()["data"]["aiNotificationsCreateChannel"][
+                "channel"
+            ]["id"]
         except Exception:
             self.logger.exception("Error creating channel for webhook")
 
@@ -699,7 +695,7 @@ class NewrelicProvider(BaseProvider):
         """
 
         self.logger.info("Setting up webhook to new relic")
-        webhook_name = self.NEWRELIC_WEBHOOK_NAME + "-" + tenant_id
+        webhook_name = f"{self.NEWRELIC_WEBHOOK_NAME}-{tenant_id}"
 
         policy_ids = []
         self.logger.info("Fetching policies")

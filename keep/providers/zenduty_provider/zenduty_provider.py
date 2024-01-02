@@ -66,9 +66,7 @@ class ZendutyProvider(BaseProvider):
             "summary": summary,
         }
         # https://github.com/Zenduty/zenduty-python-sdk/blob/master/zenduty/api_client.py#L11
-        headers = {
-            "Authorization": "Token " + self.authentication_config.api_key,
-        }
+        headers = {"Authorization": f"Token {self.authentication_config.api_key}"}
         resp = requests.post(
             url="https://www.zenduty.com/api/incidents/", json=body, headers=headers
         )

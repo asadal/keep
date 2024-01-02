@@ -26,10 +26,7 @@ def is_onboarded(
         TenantInstallation.tenant_id == tenant_id
     )
     result = session.exec(statement)
-    installations = result.all()
-    # TODO: in the future support more than one onboard..
-    # {"onboarded": {"github": true, "gitlab": false}"}}
-    if installations:
+    if installations := result.all():
         return JSONResponse({"onboarded": True})
     else:
         return JSONResponse({"onboarded": False})
@@ -53,8 +50,7 @@ async def save_github_installation_id(
             TenantInstallation.tenant_id == tenant_id,
             TenantInstallation.bot_id == str(installation_id),
         )
-        existing_installation = session.exec(statement).first()
-        if existing_installation:
+        if existing_installation := session.exec(statement).first():
             # TODO: update the installation if needed
             return JSONResponse({"success": True})
 

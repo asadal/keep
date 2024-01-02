@@ -48,8 +48,7 @@ class IOHandler:
             raise Exception(
                 f"Invalid template - number of ( and ) does not match {template}"
             )
-        val = self.parse(template, safe, default)
-        return val
+        return self.parse(template, safe, default)
 
     def quote(self, template):
         """Quote {{ }} with ''
@@ -99,7 +98,7 @@ class IOHandler:
         matches = re.findall(pattern, parsed_string)
         tokens = list(matches)
 
-        if len(tokens) == 0:
+        if not tokens:
             return parsed_string
         elif len(tokens) == 1:
             token = "".join(tokens[0])
@@ -129,10 +128,9 @@ class IOHandler:
                     _arg = None
                     if isinstance(arg, ast.Call):
                         _arg = _parse(self, arg)
-                    elif isinstance(arg, ast.Str) or isinstance(arg, ast.Constant):
+                    elif isinstance(arg, (ast.Str, ast.Constant)):
                         _arg = arg.s
-                    # set is basically {{ value }}
-                    elif isinstance(arg, ast.Set) or isinstance(arg, ast.List):
+                    elif isinstance(arg, (ast.Set, ast.List)):
                         _arg = astunparse.unparse(arg).strip()
                         if (
                             (_arg.startswith("[") and _arg.endswith("]"))
@@ -199,9 +197,7 @@ class IOHandler:
             raise RenderException(
                 f"Could not find key {key} in context - {stderr_output}"
             )
-        if not rendered:
-            return default
-        return rendered
+        return default if not rendered else rendered
 
     def render_context(self, context_to_render: dict):
         """

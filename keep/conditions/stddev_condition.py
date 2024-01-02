@@ -13,11 +13,7 @@ class StddevCondition(BaseCondition):
 
     def _filter_values_by_stddev(self, lst, threshold):
         # use only the pivot column
-        if self.pivot_column:
-            _lst = [c[self.pivot_column] for c in lst]
-        else:
-            _lst = lst
-
+        _lst = [c[self.pivot_column] for c in lst] if self.pivot_column else lst
         mean = statistics.mean(_lst)
         stddev = statistics.stdev(_lst, mean)
 
@@ -39,11 +35,7 @@ class StddevCondition(BaseCondition):
             compare_value (list): the list of values (numbers/floats)
 
         """
-        values = self._filter_values_by_stddev(compare_value, compare_to)
-        # If there are any values that are outside the standard devitation
-        if values:
-            return True
-        return False
+        return bool(values := self._filter_values_by_stddev(compare_value, compare_to))
 
     def get_compare_value(self):
         """Get the value to compare. The actual value from the step output.

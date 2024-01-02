@@ -81,7 +81,9 @@ def context_manager_with_state(mocked_context) -> ContextManager:
         print(fp.name)
         fp_name_split = fp.name.split("/")
         storage_manager_directory = "/".join(
-            fp_name_split[0:-2] if len(fp_name_split) > 3 else fp_name_split[0:-1]
+            fp_name_split[:-2]
+            if len(fp_name_split) > 3
+            else fp_name_split[:-1]
         )
         tenant_id = fp_name_split[-2] if len(fp_name_split) > 3 else ""
         file_name = fp_name_split[-1]
@@ -92,8 +94,7 @@ def context_manager_with_state(mocked_context) -> ContextManager:
         os.environ["STORAGE_MANAGER_DIRECTORY"] = storage_manager_directory
         fp.write(json.dumps(STATE_FILE_MOCK_DATA).encode())
         fp.seek(0)
-        context_manager = ContextManager(tenant_id=tenant_id, workflow_id="mock")
-        yield context_manager
+        yield ContextManager(tenant_id=tenant_id, workflow_id="mock")
 
 
 def test_context_manager_get_alert_id(context_manager: ContextManager):

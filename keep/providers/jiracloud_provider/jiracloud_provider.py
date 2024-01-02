@@ -116,12 +116,10 @@ class JiracloudProvider(BaseProvider):
         try:
             resp.raise_for_status()
         except Exception:
-            scopes = {
+            return {
                 scope.name: "Failed to authenticate with Jira - wrong credentials"
                 for scope in JiracloudProvider.PROVIDER_SCOPES
             }
-            return scopes
-
         params = {
             "permissions": ",".join(
                 [scope.name for scope in JiracloudProvider.PROVIDER_SCOPES]
@@ -137,17 +135,15 @@ class JiracloudProvider(BaseProvider):
         try:
             resp.raise_for_status()
         except Exception as e:
-            scopes = {
+            return {
                 scope.name: f"Failed to authenticate with Jira: {e}"
                 for scope in JiracloudProvider.PROVIDER_SCOPES
             }
-            return scopes
         permissions = resp.json().get("permissions", [])
-        scopes = {
+        return {
             scope: scope_result.get("havePermission", False)
             for scope, scope_result in permissions.items()
         }
-        return scopes
 
     def validate_config(self):
         self.authentication_config = JiracloudProviderAuthConfig(
@@ -232,7 +228,7 @@ class JiracloudProvider(BaseProvider):
             createmeta = self.__get_createmeta(project_key)
 
             projects = createmeta.get("projects", [])
-            project = projects[0] if len(project_key) > 0 else {}
+            project = projects[0] if project_key != "" else {}
 
             issuetypes = project.get("issuetypes", [])
             issuetype = issuetypes[0] if len(issuetypes) > 0 else {}
@@ -299,22 +295,21 @@ class JiracloudProvider(BaseProvider):
             headers={"Accept": "application/json"},
             verify=False,
         )
-        if boards_response.status_code == 200:
-            boards = boards_response.json()["values"]
-            for board in boards:
-                if board["name"].lower() == board_name.lower():
-                    self.logger.info(
-                        f"Found board {board_name} with project key {board['location']['projectKey']}"
-                    )
-                    return board["location"]["projectKey"]
+        if boards_response.status_code != 200:
+            raise Exception(f"Could not fetch boards: {boards_response.text}")
+        boards = boards_response.json()["values"]
+        for board in boards:
+            if board["name"].lower() == board_name.lower():
+                self.logger.info(
+                    f"Found board {board_name} with project key {board['location']['projectKey']}"
+                )
+                return board["location"]["projectKey"]
 
-            # if we got here, we didn't find the board name so let's throw an indicative exception
-            board_names = [board["name"] for board in boards]
-            raise Exception(
-                f"Could not find board {board_name} - please verify your board name is in this list: {board_names}."
-            )
-        else:
-            raise Exception("Could not fetch boards: " + boards_response.text)
+        # if we got here, we didn't find the board name so let's throw an indicative exception
+        board_names = [board["name"] for board in boards]
+        raise Exception(
+            f"Could not find board {board_name} - please verify your board name is in this list: {board_names}."
+        )
 
     def _notify(
         self,

@@ -130,12 +130,10 @@ async def create_user(
         return _create_user_auth0(user_email, tenant_id)
 
     data = await request.json()
-    password = data.get("password")
-
-    if not password:
+    if password := data.get("password"):
+        return _create_user_db(user_email, password, tenant_id)
+    else:
         raise HTTPException(status_code=400, detail="Password is required")
-
-    return _create_user_db(user_email, password, tenant_id)
 
 
 def _create_user_auth0(user_email: str, tenant_id: str) -> dict:
